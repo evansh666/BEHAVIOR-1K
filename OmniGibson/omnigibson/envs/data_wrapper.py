@@ -3,23 +3,21 @@ import os
 from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
+from time import time
 import logging
 
-import av
 import h5py
-from open3d import data
 import torch as th
 
 import omnigibson as og
 import omnigibson.lazy as lazy
 from omnigibson.envs.env_wrapper import EnvironmentWrapper, create_wrapper
-from omnigibson.macros import gm
+from omnigibson.macros import gm, macros
 from omnigibson.objects.object_base import BaseObject
 from omnigibson.sensors.vision_sensor import VisionSensor
 from omnigibson.utils.config_utils import TorchEncoder
 from omnigibson.utils.data_utils import merge_scene_files
 from omnigibson.utils.python_utils import create_object_from_init_info, h5py_group_to_torch
-from omnigibson.learning.utils.obs_utils import quantize_depth
 from omnigibson.utils.ui_utils import create_module_logger
 
 # Create module logger
@@ -756,6 +754,10 @@ class DataPlaybackWrapper(DataWrapper):
             config["scene"]["scene_file"] = merge_scene_files(
                 scene_a=full_scene_json, scene_b=config["scene"]["scene_file"], keep_robot_from="b"
             )
+            # Overwrite rooms type to avoid loading room types from the hdf5 file
+            config["scene"]["load_room_types"] = None
+        else:
+            config["scene"]["scene_file"] = json.loads(f["data"].attrs["scene_file"])
 
         # Use dummy task if not loading task
         if not include_task:
@@ -851,6 +853,12 @@ class DataPlaybackWrapper(DataWrapper):
         """
         # Make sure transition rules are DISABLED for playback since we manually propagate transitions
         assert not gm.ENABLE_TRANSITION_RULES, "Transition rules must be disabled for DataPlaybackWrapper env!"
+        
+        # Stabilize skipped objects
+        # we can do this here because we know that whatever's skipped during load state must have been asleep during data collection
+        # which means they're not moving and we can safely keep them still
+        with macros.unlocked():
+            macros.utils.registry_utils.STABILIZE_SKIPPED_OBJECTS = True
 
         # Store scene file so we can restore the data upon each episode reset
         self.input_hdf5 = h5py.File(input_path, "r")
@@ -949,7 +957,7 @@ class DataPlaybackWrapper(DataWrapper):
 
         # If record, record initial observations
         if record_data:
-            self.current_obs, _, _, _, init_info = self.env.step(action=action[0], n_render_iterations=self.n_render_iterations)
+            self.current_obs, _, _, _, init_info = self.env.step(action=action[0], n_render_iterations=self.n_render_iterations + 10)
             step_data = {"obs": self._process_obs(obs=self.current_obs, info=init_info)}
             self.current_traj_history.append(step_data)
 
@@ -1039,7 +1047,7 @@ class DataPlaybackWrapper(DataWrapper):
             traj_dsets[k] = dict()
         data_grp = self.hdf5_file.require_group("data") if data_grp is None else data_grp
         traj_grp = data_grp.create_group(traj_grp_name)
-        traj_grp.attrs["num_samples"] = num_samples + 1 # +1 for the initial observation
+        traj_grp.attrs["num_samples"] = num_samples
 
         for k, dat in step_data.items():
             if k in nested_keys:
@@ -1047,14 +1055,13 @@ class DataPlaybackWrapper(DataWrapper):
                 for mod, step_mod_data in dat.items():
                    traj_dsets[k][mod] = obs_grp.create_dataset(
                         mod, 
-                        shape=(num_samples + 1, *step_mod_data.shape), 
+                        shape=(num_samples, *step_mod_data.shape), 
                         dtype=step_mod_data.numpy().dtype, 
                         **self.compression,
                         chunks=(1, *step_mod_data.shape),
                         shuffle=True,
                     )
             else:
-                dat = th.tensor(dat)
                 traj_dsets[k] = traj_grp.create_dataset(
                     k, shape=(num_samples, *dat.shape), dtype=dat.numpy().dtype, **self.compression, shuffle=True
                 )
@@ -1079,12 +1086,16 @@ class DataPlaybackWrapper(DataWrapper):
             for key, dat in self.traj_dsets.items():
                 if isinstance(dat, dict):
                     for mod, dset in dat.items():
-                        dset[self.current_episode_step_count-data_length_to_flush+1:self.current_episode_step_count+1] = th.stack([
-                            self.current_traj_history[i][key][mod] for i in range(len(self.current_traj_history))
-                        ], dim=0)   
+                        obs_data_length = data_length_to_flush if self.current_episode_step_count < dset.shape[0] else data_length_to_flush - 1
+                        if obs_data_length > 0:
+                            dset[self.current_episode_step_count-data_length_to_flush+1:self.current_episode_step_count+1] = th.stack([
+                                self.current_traj_history[i][key][mod] for i in range(obs_data_length)
+                            ], dim=0)
+                        if self.current_episode_step_count == 0:
+                            dset[0] = self.current_traj_history[0][key][mod]
                 else:
                     dat[self.current_episode_step_count-data_length_to_flush:self.current_episode_step_count] = th.stack([
-                        self.current_traj_history[i][key] for i in range(len(self.current_traj_history))
+                        self.current_traj_history[i][key] for i in range(data_length_to_flush)
                     ], dim=0)
         # Reset the current trajectory history
         self.current_traj_history = []
