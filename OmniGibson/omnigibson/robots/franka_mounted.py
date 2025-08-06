@@ -1,7 +1,7 @@
 import os
 from omnigibson.macros import gm
 from omnigibson.robots.franka import FrankaPanda
-
+from omnigibson.robots.manipulation_robot import ManipulationRobot
 
 class FrankaMounted(FrankaPanda):
     """
@@ -32,3 +32,12 @@ class FrankaMounted(FrankaPanda):
         return os.path.join(
             gm.ASSET_PATH, "models/franka/franka_mounted/curobo/franka_mounted_description_curobo_default.yaml"
         )
+
+    # @property
+    # def _assisted_grasp_start_points(self):
+    #     return ManipulationRobot._assisted_grasp_start_points(self)
+
+    # @property
+    # def _assisted_grasp_end_points(self):
+    #     return ManipulationRobot._assisted_grasp_end_points(self)
+

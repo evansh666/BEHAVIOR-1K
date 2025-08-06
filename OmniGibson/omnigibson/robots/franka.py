@@ -308,13 +308,13 @@ class FrankaPanda(ManipulationRobot):
     def teleop_rotation_offset(self):
         return {self.default_arm: self._teleop_rotation_offset}
 
-    @property
-    def _assisted_grasp_start_points(self):
-        return {self.default_arm: self._ag_start_points}
+    # @property
+    # def _assisted_grasp_start_points(self):
+    #     return {self.default_arm: self._ag_start_points}
 
-    @property
-    def _assisted_grasp_end_points(self):
-        return {self.default_arm: self._ag_start_points}
+    # @property
+    # def _assisted_grasp_end_points(self):
+    #     return {self.default_arm: self._ag_end_points}
 
     @property
     def disabled_collision_pairs(self):

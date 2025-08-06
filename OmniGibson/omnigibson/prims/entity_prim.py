@@ -915,7 +915,7 @@ class EntityPrim(XFormPrim):
         """
         # Run sanity checks -- make sure we are articulated
         assert self.n_joints > 0, "Tried to call method not intended for entity prim with no joints!"
-
+        
         joint_positions = self._articulation_view.get_joint_positions().view(self.n_dof)
 
         # Possibly normalize values when returning

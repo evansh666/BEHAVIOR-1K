@@ -246,7 +246,7 @@ class JointController(LocomotionController, ManipulationController, GripperContr
         else:
             # Desired is the exact goal
             u = target
-
+        
         # Return control
         return u
 
