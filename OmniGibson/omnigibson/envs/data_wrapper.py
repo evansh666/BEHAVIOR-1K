@@ -317,6 +317,7 @@ class DataCollectionWrapper(DataWrapper):
         use_vr=False,
         obj_attr_keys=None,
         keep_checkpoint_rollback_data=False,
+        enable_dump_filters=True,
     ):
         """
         Args:
@@ -336,6 +337,7 @@ class DataCollectionWrapper(DataWrapper):
                 while the simulation is stopped.
             keep_checkpoint_rollback_data (bool): Whether to record any trajectory data pruned from rolling back to a
                 previous checkpoint
+            enable_dump_filters (bool): Whether to enable dump filters for optimized data collection. Defaults to True.
         """
         # Store additional variables needed for optimized data collection
 
@@ -384,6 +386,7 @@ class DataCollectionWrapper(DataWrapper):
         )
 
         # Configure the simulator to optimize for data collection
+        self._enable_dump_filters = enable_dump_filters
         self._optimize_sim_for_data_collection(viewport_camera_path=viewport_camera_path)
 
     def update_checkpoint(self):
@@ -395,7 +398,8 @@ class DataCollectionWrapper(DataWrapper):
         self.disable_dump_filters()
         self.checkpoint_states.append(self.scene.save(json_path=None, as_dict=True))
         self.checkpoint_step_idxs.append(len(self.current_traj_history))
-        self.enable_dump_filters()
+        if self._enable_dump_filters:
+            self.enable_dump_filters()
 
     def rollback_to_checkpoint(self, index=-1):
         """
@@ -521,7 +525,8 @@ class DataCollectionWrapper(DataWrapper):
 
         # Set the dump filter for better performance
         # TODO: Possibly remove this feature once we have fully tensorized state saving, which may be more efficient
-        self.enable_dump_filters()
+        if self._enable_dump_filters:
+            self.enable_dump_filters()
 
     def enable_dump_filters(self):
         """
@@ -853,7 +858,7 @@ class DataPlaybackWrapper(DataWrapper):
         """
         # Make sure transition rules are DISABLED for playback since we manually propagate transitions
         assert not gm.ENABLE_TRANSITION_RULES, "Transition rules must be disabled for DataPlaybackWrapper env!"
-        
+
         # Stabilize skipped objects
         # we can do this here because we know that whatever's skipped during load state must have been asleep during data collection
         # which means they're not moving and we can safely keep them still
@@ -997,10 +1002,11 @@ class DataPlaybackWrapper(DataWrapper):
                     truncated=tr,
                     info=info,
                 )
-                if i == 0 and self.flush_every_n_steps > 0:
-                    self.current_traj_grp, self.traj_dsets = self.allocate_traj_to_hdf5(step_data, f"demo_{episode_id}", num_samples=len(action))
-                if i % self.flush_every_n_steps == 0:
-                    self.flush_partial_traj()
+                if self.flush_every_n_steps > 0:
+                    if i == 0:
+                        self.current_traj_grp, self.traj_dsets = self.allocate_traj_to_hdf5(step_data, f"demo_{episode_id}", num_samples=len(action))
+                    if i % self.flush_every_n_steps == 0:
+                        self.flush_partial_traj()
                 # append to current trajectory history
                 self.current_traj_history.append(step_data)
 
@@ -1008,7 +1014,8 @@ class DataPlaybackWrapper(DataWrapper):
             self.step_count += 1
 
         if record_data:
-            self.flush_partial_traj()
+            if self.flush_every_n_steps > 0:
+                self.flush_partial_traj()
             self.flush_current_traj()
 
     def playback_dataset(self, record_data=False):
@@ -1105,9 +1112,12 @@ class DataPlaybackWrapper(DataWrapper):
         Flush current trajectory data
         For playback, we assume that all data needs to be stored. 
         """
-        self.postprocess_traj_group(self.current_traj_grp)
-        self.flush_current_file()
-        # Clear trajectory and transition buffers
-        self.traj_count += 1
-        self.current_episode_step_count = 0
-        self.current_traj_history = []
+        if self.flush_every_n_steps == 0:
+            super().flush_current_traj()
+        else:
+            self.postprocess_traj_group(self.current_traj_grp)
+            self.flush_current_file()
+            # Clear trajectory and transition buffers
+            self.traj_count += 1
+            self.current_episode_step_count = 0
+            self.current_traj_history = []

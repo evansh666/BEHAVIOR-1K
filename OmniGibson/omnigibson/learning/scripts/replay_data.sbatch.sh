@@ -6,7 +6,7 @@
 #SBATCH --gres=gpu:titanrtx:1
 #SBATCH --mem=60G
 #SBATCH --cpus-per-task=8
-#SBATCH --time=0-2:00:00
+#SBATCH --time=1-00:00:00
 #SBATCH --output=outputs/sc/replay_data_%j.out
 #SBATCH --error=outputs/sc/replay_data_%j.err
 
@@ -23,7 +23,7 @@ source /vision/u/wsai/miniconda3/bin/activate behavior
 echo "File to process: $1"
 
 echo "Running replay_obs.py on $1"
-OMNIGIBSON_HEADLESS=1 python OmniGibson/omnigibson/learning/scripts/replay_obs.py --file $1 --low_dim --rgbd --seg --bbox
+OMNIGIBSON_HEADLESS=1 python OmniGibson/omnigibson/learning/scripts/replay_obs.py --file $1 --low_dim --rgbd --seg --bbox --pcd_gt --pcd_vid
 
 echo "Job finished."
 exit 0

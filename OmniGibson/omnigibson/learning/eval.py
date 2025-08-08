@@ -98,10 +98,10 @@ class Evaluator:
         self.total_time = 0
         self.robot_action = dict()
         # fetch env type, currently only supports "omnigibson"
-        self.env_type = cfg.env
+        self.env_type = cfg.env_type
 
-        self.policy = self.load_policy()
         self.env = self.load_env()
+        self.policy = self.load_policy()
         self.robot = self.load_robot()
 
         self.obs = self.env.reset()[0]
@@ -115,7 +115,7 @@ class Evaluator:
         The config file is located in the configs/envs directory.
         """
         # Load config file
-        if self.env_type == "omnigibson":
+        if self.env_type == "sim":
             available_tasks = load_available_tasks()
             task_name = self.cfg.task.name
             assert task_name in available_tasks, f"Got invalid OmniGibson task name: {task_name}"
@@ -135,7 +135,8 @@ class Evaluator:
             cfg["robots"][0]["proprio_obs"] = list(PROPRIOCEPTION_INDICES["R1Pro"].keys())
             if self.cfg.robot.controllers is not None:
                 cfg["robots"][0]["controller_config"].update(self.cfg.robot.controllers)
-            cfg["task"]['termination_config']["max_steps"] = self.cfg.task.max_steps
+            cfg["task"]["termination_config"]["max_steps"] = self.cfg.task.max_steps
+            cfg["task"]["include_obs"] = self.cfg.model.use_task_info
             relevant_rooms = get_task_relevant_room_types(activity_name=task_name)
             relevant_rooms = augment_rooms(relevant_rooms, task_cfg["scene_model"], task_name)
             cfg["scene"]["load_room_types"] = relevant_rooms
@@ -145,11 +146,11 @@ class Evaluator:
         return env
 
     def load_robot(self) -> BaseRobot:
-        if self.env_type == "omnigibson":
+        if self.env_type == "sim":
             robot = self.env.scene.object_registry("name", "robot_r1")
             og.sim.step()
             # Update robot sensors:
-            for camera_id, camera_name in ROBOT_CAMERA_NAMES.items():
+            for camera_id, camera_name in ROBOT_CAMERA_NAMES["R1Pro"].items():
                 sensor_name = camera_name.split("::")[1]
                 if camera_id == "head": 
                     robot.sensors[sensor_name].horizontal_aperture = 40.0
@@ -178,7 +179,7 @@ class Evaluator:
         """
         self.robot_action = self.policy.forward(obs=self.obs)
         
-        self.obs, _, terminated, truncated, info = self.env.step(self.robot_action)
+        self.obs, _, terminated, truncated, info = self.env.step(self.robot_action, n_render_iterations=3)
         # process obs
         if terminated or truncated:
             self.n_trials += 1
@@ -210,9 +211,7 @@ class Evaluator:
         obs = flatten_obs_dict(obs)
         base_pose = self.robot.get_position_orientation()
         cam_rel_poses = []
-        for camera_name in ROBOT_CAMERA_NAMES.values():
-            assert camera_name.split("::")[1] in self.robot.sensors, f"Camera {camera_name} not found in robot sensors"
-            # store camera pose
+        for camera_name in ROBOT_CAMERA_NAMES["R1Pro"].values():
             cam_pose = self.robot.sensors[camera_name.split("::")[1]].get_position_orientation()
             cam_rel_poses.append(th.cat(T.relative_pose_transform(*cam_pose, *base_pose)))
         obs["robot_r1::cam_rel_poses"] = th.cat(cam_rel_poses, axis=-1)
@@ -221,14 +220,14 @@ class Evaluator:
     def _write_video(self) -> None:
         # concatenate obs
         left_wrist_rgb = cv2.resize(
-            self.obs[ROBOT_CAMERA_NAMES["left_wrist"] + "::rgb"].numpy(),
+            self.obs[ROBOT_CAMERA_NAMES["R1Pro"]["left_wrist"] + "::rgb"].numpy(),
             (360, 360),
         )
         right_wrist_rgb = cv2.resize(
-            self.obs[ROBOT_CAMERA_NAMES["right_wrist"] + "::rgb"].numpy(),
+            self.obs[ROBOT_CAMERA_NAMES["R1Pro"]["right_wrist"] + "::rgb"].numpy(),
             (360, 360),
         )
-        head_rgb = self.obs[ROBOT_CAMERA_NAMES["head"] + "::rgb"].numpy()
+        head_rgb = self.obs[ROBOT_CAMERA_NAMES["R1Pro"]["head"] + "::rgb"].numpy()
         write_video(
             np.expand_dims(np.hstack([np.vstack([left_wrist_rgb, right_wrist_rgb]), head_rgb]), 0),
             video_writer=self.video_writer,
@@ -277,7 +276,7 @@ if __name__ == "__main__":
 
     gm.HEADLESS = config.headless
 
-    video_path = Path(config.log_path)
+    video_path = Path(config.log_path).expanduser()
     video_path.mkdir(parents=True, exist_ok=True)
 
     instances_to_run = config.task.train_indices if config.task.test_on_train_indices else config.task.test_indices
@@ -288,6 +287,7 @@ if __name__ == "__main__":
  
         for idx in instances_to_run:
             load_task_instance_for_env(evaluator.env, idx)
+            logger.info(f"Starting task instance {idx} for evaluation...")
             for epi in range(episodes_per_instance):
                 for _ in range(10):
                     og.sim.render()

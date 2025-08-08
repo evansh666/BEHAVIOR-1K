@@ -4,23 +4,42 @@ from collections import OrderedDict
 
 
 ROBOT_CAMERA_NAMES = {
-    "left_wrist": "robot_r1::robot_r1:left_realsense_link:Camera:0",
-    "right_wrist": "robot_r1::robot_r1:right_realsense_link:Camera:0",
-    "head": "robot_r1::robot_r1:zed_link:Camera:0",
+    "A1": {
+        "external": "external::external_camera",
+        "wrist": "external::wrist_camera",
+    },
+    "R1Pro": {
+        "left_wrist": "robot_r1::robot_r1:left_realsense_link:Camera:0",
+        "right_wrist": "robot_r1::robot_r1:right_realsense_link:Camera:0",
+        "head": "robot_r1::robot_r1:zed_link:Camera:0",
+    }
 }
 
 # Camera resolutions and corresponding intrinstics
 HEAD_RESOLUTION = (720, 720)
 WRIST_RESOLUTION = (480, 480)
+# TODO: Fix A1
 CAMERA_INTRINSICS = {
-    "head": np.array([[306., 0., 360.], [0., 306., 360.], [0., 0., 1.]], dtype=np.float32), # 720x720
-    "left_wrist": np.array([[388.6639, 0., 240.], [0., 388.6639, 240.], [0., 0., 1.]], dtype=np.float32), # 480x480
-    "right_wrist": np.array([[388.6639, 0., 240.], [0., 388.6639, 240.], [0., 0., 1.]], dtype=np.float32), # 480x480
+    "A1": {
+        "external": np.array([[306., 0., 360.], [0., 306., 360.], [0., 0., 1.]], dtype=np.float32), # 240x240
+        "wrist": np.array([[388.6639, 0., 240.], [0., 388.6639, 240.], [0., 0., 1.]], dtype=np.float32), # 240x240
+    },
+    "R1Pro": {
+        "head": np.array([[306., 0., 360.], [0., 306., 360.], [0., 0., 1.]], dtype=np.float32), # 720x720
+        "left_wrist": np.array([[388.6639, 0., 240.], [0., 388.6639, 240.], [0., 0., 1.]], dtype=np.float32), # 480x480
+        "right_wrist": np.array([[388.6639, 0., 240.], [0., 388.6639, 240.], [0., 0., 1.]], dtype=np.float32), # 480x480
+    },
 }
 
 
 # Action indices
 ACTION_QPOS_INDICES = {
+    "A1": OrderedDict(
+        {
+            "arm": np.s_[0:6],
+            "gripper": np.s_[6:7],
+        }
+    ),
     "R1Pro": OrderedDict(
         {
             "base": np.s_[0:3],
@@ -36,6 +55,20 @@ ACTION_QPOS_INDICES = {
 
 # Proprioception configuration
 PROPRIOCEPTION_INDICES = {
+    "A1": OrderedDict(
+        {
+            "joint_qpos": np.s_[0:8],
+            "joint_qpos_sin": np.s_[8:16],
+            "joint_qpos_cos": np.s_[16:24],
+            "joint_qvel": np.s_[24:32],
+            "joint_qeffort": np.s_[32:40],
+            "eef_0_pos": np.s_[40:43],
+            "eef_0_quat": np.s_[43:47],
+            "grasp_0": np.s_[47:48],
+            "gripper_0_qpos": np.s_[48:50],
+            "gripper_0_qvel": np.s_[50:52],
+        }
+    ),
     "R1Pro": OrderedDict(
         {
             "joint_qpos": np.s_[0:28],
@@ -81,6 +114,12 @@ PROPRIOCEPTION_INDICES = {
 
 # Proprioception indices
 PROPRIO_QPOS_INDICES = {
+    "A1": OrderedDict(
+        {
+            "arm": np.s_[0:6],
+            "gripper": np.s_[6:8],
+        }
+    ),
     "R1Pro": OrderedDict(
         {
             "torso": np.s_[6:10],
@@ -93,8 +132,18 @@ PROPRIO_QPOS_INDICES = {
 }
 
 
-# Joint limits
+# Joint limits (lower, upper)
 JOINT_RANGE = {
+    "A1": {
+        "arm": (
+            th.tensor([-2.8798, 0.0, -3.3161, -2.8798, -1.6581, -2.8798], dtype=th.float32),
+            th.tensor([2.8798, 3.1415, 0.0, 2.8798, 1.6581, 2.8798], dtype=th.float32)
+        ),
+        "gripper": (
+            th.tensor([0.00], dtype=th.float32),
+            th.tensor([0.03], dtype=th.float32)
+        ),
+    },
     "R1Pro": {
         "base": (
             th.tensor([-0.75, -0.75, -1.0], dtype=th.float32),
@@ -117,35 +166,36 @@ JOINT_RANGE = {
             th.tensor([1.3090, 0.1745, 2.3562, 0.3491, 2.3562, 1.0472, 1.5708], dtype=th.float32)
         ),
         "right_gripper": (
-            th.tensor([-1], dtype=th.float32),
-            th.tensor([1], dtype=th.float32)
+            th.tensor([0.00], dtype=th.float32),
+            th.tensor([0.05], dtype=th.float32)
         ),
     }
 }
-JOINT_RANGE_ARRAY = {
-    robot_name: (
-        th.cat([
-            JOINT_RANGE[robot_name][part][0]
-            for part in ACTION_QPOS_INDICES[robot_name]
-        ]), 
-        th.cat([
-            JOINT_RANGE[robot_name][part][1]
-            for part in ACTION_QPOS_INDICES[robot_name]
-        ])
-    )
-    for robot_name in JOINT_RANGE
+
+
+EEF_POSITION_RANGE = {
+    "A1": {
+        "0": (
+            th.tensor([0.0, -0.7, 0.0], dtype=th.float32),
+            th.tensor([0.7, 0.7, 0.7], dtype=th.float32)
+        ),
+    },
+    "R1Pro": {
+        "left": (
+            th.tensor([0.0, -0.65, 0.0], dtype=th.float32),
+            th.tensor([0.65, 0.65, 2.5], dtype=th.float32)
+        ),
+        "right": (
+            th.tensor([0.0, -0.65, 0.0], dtype=th.float32),
+            th.tensor([0.65, 0.65, 2.5], dtype=th.float32)
+        ),
+    }
 }
-
-
-# PCD range
-PCD_RANGE = (
-    np.array([-0.5, -0.5, -0.5]),
-    np.array([0.5, 0.5, 0.5])
-)
 
 
 TASK_NAMES_TO_INDICES = {
     "turning_on_radio": 0,
+    "picking_up_trash": 1,
     "can_meat": 2,
 }
 TASK_INDICES_TO_NAMES = {v: k for k, v in TASK_NAMES_TO_INDICES.items()}
