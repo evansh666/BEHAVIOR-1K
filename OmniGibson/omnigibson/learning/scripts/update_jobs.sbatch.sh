@@ -1,14 +1,14 @@
 #!/bin/bash
-#SBATCH --job-name="replay_data"
+#SBATCH --job-name="update_jobs"
 #SBATCH --account=vision
 #SBATCH --partition=svl
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:titanrtx:1
-#SBATCH --mem=70G
+#SBATCH --gres=gpu:1
+#SBATCH --mem=48G
 #SBATCH --cpus-per-task=8
 #SBATCH --time=1-00:00:00
-#SBATCH --output=outputs/sc/replay_data_%j.out
-#SBATCH --error=outputs/sc/replay_data_%j.err
+#SBATCH --output=outputs/sc/update_jobs_%j.out
+#SBATCH --error=outputs/sc/update_jobs_%j.err
 
 # list out some useful information
 echo "SLURM_JOBID="$SLURM_JOBID
@@ -22,9 +22,7 @@ source /vision/u/$(whoami)/miniconda3/bin/activate behavior
 
 echo "Running with args: $@"
 
-# run slurm ready script
-/vision/u/$(whoami)/BEHAVIOR-1K/OmniGibson/scripts/slurm_ready.sh
-OMNIGIBSON_HEADLESS=1 python OmniGibson/omnigibson/learning/scripts/replay_obs.py $@ --low_dim --rgbd --seg --bbox
+OMNIGIBSON_HEADLESS=1 python OmniGibson/omnigibson/learning/scripts/update_jobs.py $@
 
 echo "Job finished."
 exit 0
