@@ -26,6 +26,7 @@ __all__ = [
     "Fetch",
     "FrankaMounted",
     "FrankaPanda",
+    "FrankaStereo",
     "Freight",
     "Husky",
     "Locobot",

@@ -1,0 +1,19 @@
+type: FrankaStereo
+multi_view_cameras:
+  external_left: 
+    name: external::external_camera_left
+    resolution: [240, 240]
+  external_right: 
+    name: external::external_camera_right
+    resolution: [240, 240]
+  external_wrist_left: 
+    name: external::wrist_camera_left
+    resolution: [240, 240]
+  external_wrist_right: 
+    name: external::wrist_camera_right
+    resolution: [240, 240]
+action_keys: [arm, gripper]
+action_key_dims:
+  arm: 7
+  gripper: 1
+controllers:  # Can be overwritten by policy
