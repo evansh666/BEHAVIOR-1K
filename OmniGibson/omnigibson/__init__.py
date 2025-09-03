@@ -15,15 +15,29 @@ from omnigibson.sensors import ALL_SENSOR_MODALITIES
 from omnigibson.simulator import _launch_simulator as launch
 from omnigibson.tasks import REGISTERED_TASKS
 
+
 # Create logger
-logging.basicConfig(format="[%(levelname)s] [%(name)s] %(message)s")
+class RelativeSeconds(logging.Formatter):
+    def format(self, record):
+        total_seconds = record.relativeCreated / 1000.0
+        hours = int(total_seconds // 3600)
+        minutes = int((total_seconds % 3600) // 60)
+        seconds = total_seconds % 60
+        # Format as HH:MM:SS.sss, with leading zeros
+        record.relativeCreated_hms = f"{hours:02d}:{minutes:02d}:{seconds:06.3f}"
+        return super().format(record)
+
+
+formatter = RelativeSeconds("[%(relativeCreated_hms)s] [%(levelname)s] [%(name)s] %(message)s")
+logging.basicConfig()
+logging.root.handlers[0].setFormatter(formatter)
 log = logging.getLogger(__name__)
 
 builtins.ISAAC_LAUNCHED_FROM_JUPYTER = (
     os.getenv("ISAAC_JUPYTER_KERNEL") is not None
 )  # We set this in the kernel.json file
 
-__version__ = "3.7.0-alpha"
+__version__ = "3.7.0"
 
 root_path = os.path.dirname(os.path.realpath(__file__))
 

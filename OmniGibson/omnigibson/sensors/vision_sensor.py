@@ -50,11 +50,11 @@ class VisionSensor(BaseSensor):
     Args:
         relative_prim_path (str): Scene-local prim path of the Sensor to encapsulate or create.
         name (str): Name for the object. Names need to be unique per scene.
-        modalities (str or list of str): Modality(s) supported by this sensor. Default is "rgb".
+        modalities (str or list of str): Modality(s) supported by this sensor. Default is "rgb". "all" will enable all
             Otherwise, valid options should be part of cls.all_modalities.
             For this vision sensor, this includes any of:
                 {rgb, depth, depth_linear, normal, seg_semantic, seg_instance, flow, bbox_2d_tight,
-                bbox_2d_loose, bbox_3d, camera}
+                bbox_2d_loose, bbox_3d, camera_params}
         enabled (bool): Whether this sensor should be enabled by default
         noise (None or BaseSensorNoise): If specified, sensor noise model to apply to this sensor.
         load_config (None or dict): If specified, should contain keyword-mapped values that are relevant for
@@ -171,7 +171,10 @@ class VisionSensor(BaseSensor):
             self.all_modalities
         ), "VisionSensor._RAW_SENSOR_TYPES must have the same keys as VisionSensor.all_modalities!"
 
-        modalities = set([modalities]) if isinstance(modalities, str) else set(modalities)
+        if modalities == "all":
+            modalities = self.all_modalities
+        else:
+            modalities = set([modalities]) if isinstance(modalities, str) else set(modalities)
 
         # 1) seg_instance and seg_instance_id require seg_semantic to be enabled (for rendering particle systems)
         # 2) bounding box observations require seg_semantic to be enabled (for remapping bounding box semantic IDs)
@@ -871,19 +874,14 @@ class VisionSensor(BaseSensor):
             n-array: (3, 3) camera intrinsic matrix. Transforming point p (x,y,z) in the camera frame via K * p will
                 produce p' (x', y', w) - the point in the image plane. To get pixel coordiantes, divide x' and y' by w
         """
-        focal_length = self.camera_parameters["cameraFocalLength"]
+        P = self.camera_parameters["cameraProjection"].reshape(4, 4)
         width, height = self.camera_parameters["renderProductResolution"]
-        horizontal_aperture = self.camera_parameters["cameraAperture"][0]
-        horizontal_fov = 2 * math.atan(horizontal_aperture / (2 * focal_length))
-        vertical_fov = horizontal_fov * height / width
-
-        fx = (width / 2.0) / math.tan(horizontal_fov / 2.0)
-        fy = (height / 2.0) / math.tan(vertical_fov / 2.0)
-        cx = width / 2
-        cy = height / 2
-
-        intrinsic_matrix = th.tensor([[fx, 0.0, cx], [0.0, fy, cy], [0.0, 0.0, 1.0]], dtype=th.float)
-        return intrinsic_matrix
+        fx = P[0, 0] * width / 2.0
+        fy = P[1, 1] * height / 2.0
+        cx = (1.0 - P[0, 2]) * width / 2.0
+        cy = (1.0 - P[1, 2]) * height / 2.0
+        K = th.tensor([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+        return K
 
     @property
     def _obs_space_mapping(self):
