@@ -11,6 +11,12 @@ ROBOT_CAMERA_NAMES = {
         "external": "external::external_camera",
         "wrist": "external::wrist_camera",
     },
+    "FrankaStereo": {
+        "external_left": "external::external_camera_left",
+        "external_right": "external::external_camera_right",
+        "wrist_left": "external::wrist_camera_left",
+        "wrist_right": "external::wrist_camera_right",
+    },
     "R1Pro": {
         "left_wrist": "robot_r1::robot_r1:left_realsense_link:camera:0",
         "right_wrist": "robot_r1::robot_r1:right_realsense_link:camera:0",
@@ -35,6 +41,12 @@ CAMERA_INTRINSICS = {
         "wrist": np.array(
             [[388.6639, 0.0, 240.0], [0.0, 388.6639, 240.0], [0.0, 0.0, 1.0]], dtype=np.float32
         ),  # 240x240
+    },
+    "FrankaStereo": {
+        "external_left": np.array([[306.0, 0.0, 360.0], [0.0, 306.0, 360.0], [0.0, 0.0, 1.0]], dtype=np.float32),  # 240x240
+        "external_right": np.array([[306.0, 0.0, 360.0], [0.0, 306.0, 360.0], [0.0, 0.0, 1.0]], dtype=np.float32),  # 240x240
+        "wrist_left": np.array([[388.6639, 0.0, 240.0], [0.0, 388.6639, 240.0], [0.0, 0.0, 1.0]], dtype=np.float32),  # 240x240
+        "wrist_right": np.array([[388.6639, 0.0, 240.0], [0.0, 388.6639, 240.0], [0.0, 0.0, 1.0]], dtype=np.float32),  # 240x240
     },
     "R1Pro": {
         "head": np.array([[306.0, 0.0, 360.0], [0.0, 306.0, 360.0], [0.0, 0.0, 1.0]], dtype=np.float32),  # 720x720
@@ -62,7 +74,12 @@ ACTION_QPOS_INDICES = {
             "gripper": np.s_[7:8],
         }
     ),
-    
+    "FrankaStereo": OrderedDict(
+        {
+            "arm": np.s_[0:7],
+            "gripper": np.s_[7:8],
+        }
+    ),
     "R1Pro": OrderedDict(
         {
             "base": np.s_[0:3],
@@ -93,6 +110,20 @@ PROPRIOCEPTION_INDICES = {
         }
     ),
     "FrankaPanda": OrderedDict(
+        {
+            "joint_qpos": np.s_[0:9],
+            "joint_qpos_sin": np.s_[9:18],
+            "joint_qpos_cos": np.s_[18:27],
+            "joint_qvel": np.s_[27:36],
+            "joint_qeffort": np.s_[36:45],
+            "eef_0_pos": np.s_[45:48],
+            "eef_0_quat": np.s_[48:52],
+            "grasp_0": np.s_[52:53],
+            "gripper_0_qpos": np.s_[53:55],
+            "gripper_0_qvel": np.s_[55:57],
+        }
+    ),
+    "FrankaStereo": OrderedDict(
         {
             "joint_qpos": np.s_[0:9],
             "joint_qpos_sin": np.s_[9:18],
@@ -163,6 +194,12 @@ PROPRIO_QPOS_INDICES = {
             "gripper": np.s_[7:8],
         }
     ),
+    "FrankaStereo": OrderedDict(
+        {
+            "arm": np.s_[0:7],
+            "gripper": np.s_[7:8],
+        }
+    ),
     "R1Pro": OrderedDict(
         {
             "torso": np.s_[6:10],
@@ -195,6 +232,13 @@ JOINT_RANGE = {
         ),
         "gripper": (th.tensor([0.00], dtype=th.float32), th.tensor([0.04], dtype=th.float32)),
     },
+    "FrankaStereo": {
+       "arm": (
+            th.tensor([-2.89, -1.7628, -2.8973, -3.0718, -2.8975, -0.0175, -2.8880], dtype=th.float32),
+            th.tensor([2.8798, 1.7628, 2.8798, -0.0698, 2.8975, 3.7526, 2.8798], dtype=th.float32),
+        ),
+        "gripper": (th.tensor([0.00], dtype=th.float32), th.tensor([0.04], dtype=th.float32)),
+    },
     "R1Pro": {
         "base": (th.tensor([-0.75, -0.75, -1.0], dtype=th.float32), th.tensor([0.75, 0.75, 1.0], dtype=th.float32)),
         "torso": (
@@ -220,6 +264,9 @@ EEF_POSITION_RANGE = {
         "0": (th.tensor([0.0, -0.7, 0.0], dtype=th.float32), th.tensor([0.7, 0.7, 0.7], dtype=th.float32)),
     },
     "FrankaPanda": {
+        "0": (th.tensor([0.0, -0.7, 0.0], dtype=th.float32), th.tensor([0.7, 0.7, 0.7], dtype=th.float32)),
+    },
+    "FrankaStereo": {
         "0": (th.tensor([0.0, -0.7, 0.0], dtype=th.float32), th.tensor([0.7, 0.7, 0.7], dtype=th.float32)),
     },
     "R1Pro": {

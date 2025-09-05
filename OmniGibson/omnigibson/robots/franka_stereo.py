@@ -8,7 +8,10 @@ class FrankaStereo(FrankaPanda):
     """
     The Franka Emika Panda robot mounted on a custom chassis with a custom gripper
     """
-
+    @property
+    def model_name(self):
+        return "franka_stereo"
+    
     @property
     def _raw_controller_order(self):
         return [f"arm_{self.default_arm}", f"gripper_{self.default_arm}"]
@@ -23,7 +26,7 @@ class FrankaStereo(FrankaPanda):
     @property
     def usd_path(self):
         return os.path.join(
-            get_dataset_path("omnigibson-robot-assets"), "models/franka/franka_panda_stereo/usd/franka_panda_stereo.usda"
+            get_dataset_path("omnigibson-robot-assets"), "models/franka/franka_stereo/usd/franka_stereo.usda"
         )
 
     # @property
