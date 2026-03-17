@@ -506,6 +506,7 @@ def process_fused_point_cloud(
         print("Processing fused point cloud from observations...")
     rgb_pcd, seg_pcd = [], []
     for idx, (camera_name, intrinsics) in enumerate(camera_intrinsics.items()):
+        #print(camera_name, obs["cam_rel_poses"][..., 7 * idx : 7 * idx + 7], intrinsics)
         pcd = depth_to_pcd(
             obs[f"{camera_name}::depth_linear"], obs["cam_rel_poses"][..., 7 * idx : 7 * idx + 7], intrinsics
         )
@@ -527,6 +528,7 @@ def process_fused_point_cloud(
         & (fused_pcd_all[..., 5] <= z_max)
     )
     fused_pcd_all[~mask] = 0.0
+    #fused_pcd_all = fused_pcd_all[mask]
     if process_seg:
         seg_pcd = th.cat(seg_pcd, dim=-1)
         seg_pcd = seg_pcd[mask]  # shape (N, [T])

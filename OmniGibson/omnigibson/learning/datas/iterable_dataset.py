@@ -104,7 +104,8 @@ class BehaviorIterableDataset(IterableDataset):
             seed (int): Random seed.
             shuffle (bool): Whether to shuffle the dataset.
         """
-        super().__init__(*args, **kwargs)
+        #super().__init__(*args, **kwargs)
+        super().__init__()
         self._data_path = data_path
         self._demo_keys = demo_keys
         self._robot_type = robot_type
@@ -128,6 +129,7 @@ class BehaviorIterableDataset(IterableDataset):
         assert set(visual_obs_types).issubset(
             {"rgb", "depth_linear", "seg_instance_id", "pcd"}
         ), "visual_obs_types must be a subset of {'rgb', 'depth_linear', 'seg_instance_id', 'pcd'}!"
+        #print("Debug flag 0:", visual_obs_types)
         self._visual_obs_types = set(visual_obs_types)
 
         self._multi_view_cameras = multi_view_cameras
@@ -183,6 +185,7 @@ class BehaviorIterableDataset(IterableDataset):
                 )
                 # Create a generator that yields sliding windows of point clouds
                 pcd_data = f_pcd["data/demo_0/robot_r1::fused_pcd"]
+                #pcd_data = f_pcd["data/demo_0/robot::fused_pcd"]
                 pcd_generator = self._h5_window_generator(pcd_data, start_idx, end_idx)
             else:
                 # calculate the start a

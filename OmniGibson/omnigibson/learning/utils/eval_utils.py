@@ -28,6 +28,8 @@ ROBOT_CAMERA_NAMES = {
 HEAD_RESOLUTION = (720, 720)
 WRIST_RESOLUTION = (480, 480)
 
+pnp_f = 291.49795899178076297175721265375614166259765625
+
 # TODO: Fix A1
 CAMERA_INTRINSICS = {
     "A1": {
@@ -36,10 +38,16 @@ CAMERA_INTRINSICS = {
             [[388.6639, 0.0, 240.0], [0.0, 388.6639, 240.0], [0.0, 0.0, 1.0]], dtype=np.float32
         ),  # 240x240
     },
+    # "FrankaPanda": {
+    #     "external": np.array([[306.0, 0.0, 360.0], [0.0, 306.0, 360.0], [0.0, 0.0, 1.0]], dtype=np.float32),  # 240x240
+    #     "wrist": np.array(
+    #         [[388.6639, 0.0, 240.0], [0.0, 388.6639, 240.0], [0.0, 0.0, 1.0]], dtype=np.float32
+    #     ),  # 240x240
+    # },
     "FrankaPanda": {
-        "external": np.array([[306.0, 0.0, 360.0], [0.0, 306.0, 360.0], [0.0, 0.0, 1.0]], dtype=np.float32),  # 240x240
+        "external": np.array([[pnp_f, 0.0, 180.0], [0.0, pnp_f, 180.0], [0.0, 0.0, 1.0]], dtype=np.float32),  # 240x240
         "wrist": np.array(
-            [[388.6639, 0.0, 240.0], [0.0, 388.6639, 240.0], [0.0, 0.0, 1.0]], dtype=np.float32
+            [[pnp_f, 0.0, 180.0], [0.0, pnp_f, 180.0], [0.0, 0.0, 1.0]], dtype=np.float32
         ),  # 240x240
     },
     "FrankaStereo": {
