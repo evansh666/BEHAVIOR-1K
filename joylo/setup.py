@@ -30,14 +30,14 @@ setuptools.setup(
         "pybullet",
         "pygame",
         "pyglm",
-        "PyQt6",
+        "PyQt6==6.9.1",
         "pyquaternion",
         "pure-python-adb",
         "quaternion",
         "termcolor",
         "tyro",
         "zmq",
-        "telemoma~=0.2.0",
+        "telemoma~=0.3.0",
     ],
     extras_require={
         "dev": [

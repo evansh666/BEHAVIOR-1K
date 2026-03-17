@@ -66,7 +66,7 @@ If you’re new to embodied AI, don’t worry: the BEHAVIOR challenge provides t
 
 ## **Evaluation, Timeline, and Prizes**
 
-**Please see the detailed challenge rules [on this page](./rules.md). Here is a high-level overview.**
+**Please see the detailed challenge rules [on this page](./evaluation.md). Here is a high-level overview.**
 
 ### **How will entries be evaluated?** 
 
@@ -86,7 +86,7 @@ Submissions will be made through Google Form. Teams will evaluate their solution
 
 **September 2nd, 2025:** Challenge **launch** - participants can register on our platform, download all data, and begin developing their solutions. During this phase, you can submit to the public leaderboard to see where you stand and iterate on your models.
 
-**November 15th, 2025:** **Final evaluation** - the organizers will run all qualified submissions on the hidden test set in a controlled environment. We’ll then aggregate the results and identify the top-performing solutions.
+**November 16th, 2025:** **Final evaluation** - the organizers will run all qualified submissions on the hidden test set in a controlled environment. We’ll then aggregate the results and identify the top-performing solutions.
 
 **December 6-7, 2025:** **NeurIPS 2025 Competition Event** - final results are revealed and the **winners announced** at the NeurIPS conference in San Diego. The top teams will be invited to present their approaches at the NeurIPS competition track workshop. This is a great opportunity to discuss what worked, what didn’t, and share insights with the broader research community.
 
@@ -104,7 +104,7 @@ This challenge marks the beginning of a new frontier in embodied AI and robotics
 
 By participating in the BEHAVIOR Challenge, you’ll help shed light on these questions. Perhaps your approach will demonstrate a breakthrough in low-level manipulation skill learning or long-horizon planning, or maybe it will reveal that current methods plateau and we need new ideas. Either way, the findings will be invaluable to guide future research.
 
-We also warmly invite everyone to **join our BEHAVIOR [Discord community](https://discord.gg/bccR5vGFEx)** and our public office hours every Monday & Thursday 4:30-6:00pm PST via **[Zoom](https://stanford.zoom.us/j/92909660940?pwd=RgFrdC8XeB3nVxABqb1gxrK96BCRBa.1https://stanford.zoom.us/j/92909660940?pwd=RgFrdC8XeB3nVxABqb1gxrK96BCRBa.1)**. This is the central hub for participants to ask questions, share progress, and get help from the organizers. Whether you’re a robotics expert or just starting out in embodied AI, you’ll find peers and mentors on the Discord ready to collaborate. Our team will be active there to provide technical support, clarify rules, and hear your feedback — we’re here to help you succeed.
+We also warmly invite everyone to **join our BEHAVIOR [Discord community](https://discord.gg/bccR5vGFEx)** and our public office hours every Monday & Thursday 4:30-5:30pm PST via **[Zoom](https://stanford.zoom.us/j/92909660940?pwd=RgFrdC8XeB3nVxABqb1gxrK96BCRBa.1)**. This is the central hub for participants to ask questions, share progress, and get help from the organizers. Whether you’re a robotics expert or just starting out in embodied AI, you’ll find peers and mentors on the Discord ready to collaborate. Our team will be active there to provide technical support, clarify rules, and hear your feedback — we’re here to help you succeed.
 
 In conclusion, the 1st BEHAVIOR Challenge is not just a competition for a leaderboard spot — it's a collective exploration of what it takes to make AI agents that truly **understand and interact with the human world**. The tasks are hard, yes, but they are also deeply meaningful: they represent the kind of assistance that could one day improve people's daily lives. By tackling them in simulation now, we take important steps toward that future. We encourage you to bring your creativity, your best algorithms, and maybe a bit of courage (to face the wild world of household chores!) and join us in this challenge.
 

@@ -16,7 +16,7 @@ class Args:
     gello_name: str
     """The name of the gello (used to determine which file to write to)"""
 
-    port: str = "/dev/ttyUSB0"
+    port: str = "/dev/ttyUSB2"
     """The port that GELLO is connected to."""
 
     baudrate: int = 2000000

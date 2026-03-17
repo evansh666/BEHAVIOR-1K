@@ -1,12 +1,12 @@
 joystick:
   horizontal:
-    center: 2054
+    center: 2060
     limits:
-    - 728
-    - 3367
+    - 706
+    - 3412
   vertical:
-    center: 1958
+    center: 1952
     limits:
-    - 825
-    - 3080
+    - 812
+    - 3079
 side: left

@@ -13,7 +13,7 @@ long_description = "".join(lines)
 
 setup(
     name="omnigibson",
-    version="3.7.0",
+    version="3.7.2",
     author="Stanford University",
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -50,8 +50,9 @@ setup(
         "matplotlib>=3.0.0",
         "lxml>=5.2.2",
         "numba>=0.59.1",
-        "cffi>=1.16.0",
+        "cffi==1.17.1",
         "pillow~=11.0.0",
+        "websockets>=15.0.1",
     ],
     extras_require={
         "dev": [
@@ -68,17 +69,17 @@ setup(
             "mkdocs-literate-nav",
             "mkdocs-redirects",
             "mkdocs-include-markdown-plugin",
-            "telemoma~=0.2.0",
-            "gspread",
+            "telemoma~=0.3.0",
+            "gspread>=6.2.1",
         ],
         "primitives": [
+            "ninja~=1.13.0",
             "nvidia-curobo @ git+https://github.com/StanfordVL/curobo@cbaf7d32436160956dad190a9465360fad6aba73",
             "ompl @ https://storage.googleapis.com/gibson_scenes/ompl-1.6.0-cp310-cp310-manylinux_2_28_x86_64.whl",
         ],
         "eval": [
             "dm_tree>=0.1.9",
             "hydra-core>=1.3.2",
-            "websockets>=15.0.1",
             "msgpack>=1.1.0",
             "lerobot @ git+https://github.com/huggingface/lerobot@577cd10974b84bea1f06b6472eb9e5e74e07f77a",
             "gspread>=6.2.1",

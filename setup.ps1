@@ -55,11 +55,6 @@ if ($OmniGibson -and -not $BDDL) {
     exit 1
 }
 
-if ($Dataset -and -not $OmniGibson) {
-    Write-Error "ERROR: -Dataset requires -OmniGibson"
-    exit 1
-}
-
 if ($Primitives -and -not $OmniGibson) {
     Write-Error "ERROR: -Primitives requires -OmniGibson"
     exit 1
@@ -67,6 +62,10 @@ if ($Primitives -and -not $OmniGibson) {
 
 if ($Eval -and -not $OmniGibson) {
     Write-Error "ERROR: -Eval requires -OmniGibson"
+}
+
+if ($Eval -and -not $JoyLo) {
+    Write-Error "ERROR: -Eval requires -JoyLo"
 }
 
 if ($NewEnv -and $ConfirmNoConda) {
@@ -150,7 +149,7 @@ function Prompt-ForTerms {
         Write-Host @"
 3. BEHAVIOR DATA BUNDLE END USER LICENSE AGREEMENT
     Last revision: December 8, 2022
-    This License Agreement is for the BEHAVIOR Data Bundle ("Data"). It works with OmniGibson ("Software") which is a software stack licensed under the MIT License, provided in this repository: https://github.com/StanfordVL/OmniGibson. 
+    This License Agreement is for the BEHAVIOR Data Bundle ("Data"). It works with OmniGibson ("Software") which is a software stack licensed under the MIT License, provided in this repository: https://github.com/StanfordVL/BEHAVIOR-1K. 
     The license agreements for OmniGibson and the Data are independent. This BEHAVIOR Data Bundle contains artwork and images ("Third Party Content") from third parties with restrictions on redistribution. 
     It requires measures to protect the Third Party Content which we have taken such as encryption and the inclusion of restrictions on any reverse engineering and use. 
     Recipient is granted the right to use the Data under the following terms and conditions of this License Agreement ("Agreement"):
@@ -289,12 +288,12 @@ function Find-IsaacSimPath {
 if ($BDDL) {
     Write-Host "Installing BDDL..."
     
-    if (-not (Test-Path "bddl")) {
+    if (-not (Test-Path "bddl3")) {
         Write-Error "ERROR: bddl directory not found"
         exit 1
     }
     
-    pip install -e "$WorkDir\bddl"
+    pip install -e "$WorkDir\bddl3"
 }
 
 # Install OmniGibson with Isaac Sim
@@ -418,50 +417,26 @@ if ($extrasList.Count -gt 0) {
             Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
         }
         
-        # Fix cryptography conflict
-        if ($env:ISAAC_PATH) {
-            $cryptographyPath = Join-Path $env:ISAAC_PATH "exts\omni.pip.cloud\pip_prebundle\cryptography"
-            if (Test-Path $cryptographyPath) {
-                Write-Host "Fixing cryptography conflict..."
-                Remove-Item -Path $cryptographyPath -Recurse -Force
+        # Extract ISAAC_PATH from isaacsim module
+        $IsaacPath = python -c "import isaacsim, os; print(os.environ.get('ISAAC_PATH', ''))" 2>$null
+        
+        if ($IsaacPath) {
+            # Fix websockets conflict - remove any extscache/**/pip_prebundle/websockets
+            $extscacheRoot = Join-Path $IsaacPath "extscache"
+            if (Test-Path $extscacheRoot) {
+                Get-ChildItem -Path $extscacheRoot -Directory -Recurse -Force -ErrorAction SilentlyContinue |
+                    Where-Object { $_.FullName -like "*\pip_prebundle\websockets" } |
+                    ForEach-Object {
+                        Write-Host "Removing websockets prebundle at $($_.FullName)..."
+                        Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+                    }
             }
         }
     }
     
-    # Install datasets
-    if ($Dataset) {
-        Write-Host "Installing datasets..."
-        
-        # Determine if we should accept dataset license automatically
-        $DatasetAcceptFlag = "False"
-        if ($AcceptDatasetTos) {
-            $DatasetAcceptFlag = "True"
-        }
-        
-        $env:OMNI_KIT_ACCEPT_EULA = "YES"
+    # Force reinstall cffi 1.17.1 to resolve compatibility issues with Isaac Sim extensions
+    pip install --force-reinstall cffi==1.17.1
 
-        Write-Host "Downloading OmniGibson robot assets..."
-        python -c "from omnigibson.utils.asset_utils import download_omnigibson_robot_assets; download_omnigibson_robot_assets()"
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "ERROR: OmniGibson robot assets installation failed"
-            exit 1
-        }
-
-        Write-Host "Downloading BEHAVIOR-1K assets..."
-        python -c "from omnigibson.utils.asset_utils import download_behavior_1k_assets; download_behavior_1k_assets(accept_license=$DatasetAcceptFlag)"
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "ERROR: Dataset installation failed"
-            exit 1
-        }
-    
-        Write-Host "Downloading 2025 BEHAVIOR Challenge Task Instances..."
-        python -c "from omnigibson.utils.asset_utils import download_2025_challenge_task_instances; download_2025_challenge_task_instances()"
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "ERROR: 2025 BEHAVIOR Challenge Task Instances installation failed"
-            exit 1
-        }
-    }
-    
     Write-Host "OmniGibson installation completed successfully!"
 }
 
@@ -485,7 +460,7 @@ if ($Eval) {
     $TorchVersion = (pip show torch | Select-String "Version" | ForEach-Object { $_.ToString().Split(" ")[-1] })
     pip install torch-cluster -f "https://data.pyg.org/whl/torch-$TorchVersion.html"
     conda install av -c conda-forge -y
-
+}
 
 # Install asset pipeline
 if ($AssetPipeline) {
@@ -497,6 +472,47 @@ if ($AssetPipeline) {
     }
     
     pip install -r "$WorkDir\asset_pipeline\requirements.txt"
+}
+
+# Install datasets
+if ($Dataset) {
+
+    python -c "import omnigibson"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: OmniGibson import failed, please make sure you have omnigibson installed before downloading datasets"
+        exit 1
+    }
+
+    Write-Host "Installing datasets..."
+    
+    # Determine if we should accept dataset license automatically
+    $DatasetAcceptFlag = "False"
+    if ($AcceptDatasetTos) {
+        $DatasetAcceptFlag = "True"
+    }
+    
+    $env:OMNI_KIT_ACCEPT_EULA = "YES"
+
+    Write-Host "Downloading OmniGibson robot assets..."
+    python -c "from omnigibson.utils.asset_utils import download_omnigibson_robot_assets; download_omnigibson_robot_assets()"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: OmniGibson robot assets installation failed"
+        exit 1
+    }
+
+    Write-Host "Downloading BEHAVIOR-1K assets..."
+    python -c "from omnigibson.utils.asset_utils import download_behavior_1k_assets; download_behavior_1k_assets(accept_license=$DatasetAcceptFlag)"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: Dataset installation failed"
+        exit 1
+    }
+
+    Write-Host "Downloading 2025 BEHAVIOR Challenge Task Instances..."
+    python -c "from omnigibson.utils.asset_utils import download_2025_challenge_task_instances; download_2025_challenge_task_instances()"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: 2025 BEHAVIOR Challenge Task Instances installation failed"
+        exit 1
+    }
 }
 
 # Installation summary

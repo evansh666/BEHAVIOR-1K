@@ -16,7 +16,7 @@ class Args:
     hostname: str = "127.0.0.1"
     robot_ip: str = "192.168.1.10"
     recording_path: Optional[str] = None
-    task_name: Optional[str] = None
+    task_name: Optional[str] = "make_pizza"
     partial_load: Optional[bool] = True
     instance_id: Optional[int] = None
 

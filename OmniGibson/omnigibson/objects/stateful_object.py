@@ -181,9 +181,9 @@ class StatefulObject(BaseObject):
             state (ObjectStateBase): Object state instance to add to this object
         """
         assert self._states is not None, "Cannot add state since states have not been initialized yet!"
-        assert state.__class__ not in self._states, (
-            f"State {state.__class__.__name__} " f"has already been added to this object!"
-        )
+        assert (
+            state.__class__ not in self._states
+        ), f"State {state.__class__.__name__} has already been added to this object!"
         self._states[state.__class__] = state
 
     @property
@@ -243,7 +243,7 @@ class StatefulObject(BaseObject):
                     compatible, reason = requirement.is_compatible(obj=self)
                     if not compatible:
                         # Print out warning and pop ability
-                        log.warning(
+                        log.debug(
                             f"Ability '{ability}' is incompatible with obj {self.name}, "
                             f"because requirement {requirement.__name__} was not met. Reason: {reason}"
                         )
@@ -280,7 +280,7 @@ class StatefulObject(BaseObject):
             if compatible:
                 self._states[state_type] = state_type(obj=self, **relevant_params)
             else:
-                log.warning(f"State {state_type.__name__} is incompatible with obj {self.name}. Reason: {reason}")
+                log.debug(f"State {state_type.__name__} is incompatible with obj {self.name}. Reason: {reason}")
                 # Remove the ability if it exists
                 # Note that the object may still have some of the states related to the desired ability. In this way,
                 # we guarantee that the existence of a certain ability in self.abilities means at ALL corresponding

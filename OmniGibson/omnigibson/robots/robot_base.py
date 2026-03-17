@@ -21,7 +21,7 @@ from omnigibson.utils.gym_utils import GymObservable
 from omnigibson.utils.numpy_utils import NumpyTypes
 from omnigibson.utils.python_utils import classproperty, merge_nested_dicts
 from omnigibson.utils.usd_utils import ControllableObjectViewAPI, absolute_prim_path_to_scene_relative
-from omnigibson.utils.vision_utils import segmentation_to_rgb
+from omnigibson.utils.vision_utils import segmentation_to_rgb, change_pcd_frame
 
 # Global dicts that will contain mappings
 REGISTERED_ROBOTS = dict()
@@ -102,7 +102,7 @@ class BaseRobot(USDObject, ControllableObject, GymObservable):
             reset_joint_pos (None or n-array): if specified, should be the joint positions that the object should
                 be set to during a reset. If None (default), self._default_joint_pos will be used instead.
                 Note that _default_joint_pos are hardcoded & precomputed, and thus should not be modified by the user.
-                Set this value instead if you want to initialize the robot with a different rese joint position.
+                Set this value instead if you want to initialize the robot with a different reset joint position.
             obs_modalities (str or list of str): Observation modalities to use for this robot. Default is ["rgb", "proprio"].
                 Valid options are "all", or a list containing any subset of omnigibson.sensors.ALL_SENSOR_MODALITIES.
                 Note: If @sensor_config explicitly specifies `modalities` for a given sensor class, it will
@@ -313,6 +313,13 @@ class BaseRobot(USDObject, ControllableObject, GymObservable):
         info_dict = dict()
         for sensor_name, sensor in self._sensors.items():
             obs_dict[sensor_name], info_dict[sensor_name] = sensor.get_obs()
+            for key in obs_dict[sensor_name]:
+                if "pointcloud" in key:
+                    # convert point cloud from world frame to robot base frame
+                    obs_dict[sensor_name][key] = change_pcd_frame(
+                        pcd=obs_dict[sensor_name][key],
+                        rel_pose=th.cat(self.get_position_orientation()),
+                    )
 
         # Have to handle proprio separately since it's not an actual sensor
         if "proprio" in self._obs_modalities:

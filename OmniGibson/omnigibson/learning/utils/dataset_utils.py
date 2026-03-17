@@ -1,6 +1,6 @@
 import getpass
-import gspread
 import json
+import numpy as np
 import os
 import omnigibson as og
 import pandas as pd
@@ -13,7 +13,7 @@ import time
 import zipfile
 from collections import Counter
 from datetime import datetime
-from typing import Tuple, List, Optional
+from typing import Any, Tuple, List, Optional
 from tqdm import tqdm
 from google.oauth2.service_account import Credentials
 from omnigibson.learning.utils.eval_utils import TASK_NAMES_TO_INDICES
@@ -49,7 +49,7 @@ def makedirs_with_mode(path, mode=0o2775) -> None:
             pass
 
 
-def get_credentials(credentials_path: str = "~/Documents/credentials") -> Tuple[gspread.Client, dict, str]:
+def get_credentials(credentials_path: str = "~/Documents/credentials") -> Tuple[Any, dict, str]:
     """
     [Internal use only] Get Google Sheets and Lightwheel API credentials.
     Args:
@@ -57,6 +57,8 @@ def get_credentials(credentials_path: str = "~/Documents/credentials") -> Tuple[
     Returns:
         Tuple[gspread.Client, dict, str]: Google Sheets client and Lightwheel API credentials and token.
     """
+    import gspread
+
     credentials_path = os.path.expanduser(credentials_path)
     # authorize with Google Sheets API
     SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
@@ -87,6 +89,8 @@ def update_google_sheet(credentials_path: str, task_name: str, row_idx: int) -> 
         task_name (str): Name of the task to update.
         row_idx (int): Row index to update.
     """
+    import gspread
+
     assert getpass.getuser() in VALID_USER_NAME, f"Invalid user {getpass.getuser()}"
     # authorize with Google Sheets API
     SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
@@ -358,10 +362,14 @@ def remove_failed_episodes(worksheet, data_dir: str) -> None:
 
 
 def extract_annotations(
-    data_dir: str, annotation_data_dir: str, credentials_path: str = "~/Documents/credentials"
+    data_dir: str,
+    annotation_data_dir: str,
+    credentials_path: str = "~/Documents/credentials",
+    remove_memory_prefix: bool = False,
 ) -> None:
     """
     Extract annotations from the annotation data directory and store in the data directory.
+    If remove_memory_prefix is True, remove "memory_prefix" field in skill annotations.
     """
     data_dir = os.path.expanduser(data_dir)
     makedirs_with_mode(f"{data_dir}/annotations")
@@ -403,9 +411,27 @@ def extract_annotations(
                         f"{data_dir}/annotations/task-{task_index:04d}/{filename}_{timestamp}.json",
                         f"{data_dir}/annotations/task-{task_index:04d}/episode_{task_index:04d}{instance_id:03d}{traj_id:01d}.json",
                     )
+                    if remove_memory_prefix:
+                        # remove "memory" in skill_annotations and primitive_annotations
+                        with open(
+                            f"{data_dir}/annotations/task-{task_index:04d}/episode_{task_index:04d}{instance_id:03d}{traj_id:01d}.json",
+                            "r",
+                        ) as f:
+                            annotation_data = json.load(f)
+                        for skill in annotation_data.get("skill_annotation", []):
+                            if "memory_prefix" in skill:
+                                del skill["memory_prefix"]
+                        for primitive in annotation_data.get("primitive_annotation", []):
+                            if "memory_prefix" in primitive:
+                                del primitive["memory_prefix"]
+                        with open(
+                            f"{data_dir}/annotations/task-{task_index:04d}/episode_{task_index:04d}{instance_id:03d}{traj_id:01d}.json",
+                            "w",
+                        ) as f:
+                            json.dump(annotation_data, f, indent=4)
             print(f"Finished processing task {task_index} - {filename}")
             task_processed += 1
-            time.sleep(1)  # to avoid rate limiting
+            time.sleep(1.5)  # to avoid rate limiting
 
     # remove __MACOSX folder
     shutil.rmtree(f"{data_dir}/annotations/__MACOSX")
@@ -566,6 +592,38 @@ def update_parquet_indices(root_dir: str):
                 print(f"Skipping {fpath}, error: {e}")
 
 
+def remove_grasp_state(root_dir: str):
+    """
+    For every parquet file named episode_XXXXXXXX.parquet,
+    If observation.state has dim 258, remove dim 193 and 233 (grasp_left and grasp_right) and save the parquet back to disk.
+    """
+    pat = re.compile(r"episode_(\d{8})\.parquet$")
+
+    for dirpath, _, filenames in os.walk(root_dir):
+        print(dirpath)
+        for fname in filenames:
+            fpath = os.path.join(dirpath, fname)
+
+            m = pat.search(fname)
+            if not m:
+                continue  # not a matching parquet
+
+            try:
+                df = pd.read_parquet(fpath)
+
+                assert "observation.state" in df.columns
+                obs = np.array(df["observation.state"].tolist())
+                if obs.ndim == 2 and obs.shape[1] == 258:
+                    obs = np.delete(obs, [193, 233], axis=1)
+                    df["observation.state"] = obs.tolist()
+
+                    # overwrite parquet
+                    df.to_parquet(fpath, index=False)
+
+            except Exception as e:
+                print(f"Skipping {fpath}, error: {e}")
+
+
 def fix_permissions(root_dir: str):
     """Recursively set rw-rw-r-- for all files owned by the current user."""
     for dirpath, _, filenames in os.walk(root_dir):
@@ -639,6 +697,8 @@ def update_tracking_sheet(
         credentials_path (str): The path to the credentials file.
         max_entries_per_task (Optional[int]): The maximum number of entries to process per task.
     """
+    import gspread
+
     assert getpass.getuser() in VALID_USER_NAME, f"Invalid user {getpass.getuser()}"
     gc, lightwheel_api_credentials, lw_token = get_credentials(credentials_path)
     spreadsheet = gc.open("B1K Challenge 2025 Data Replay Tracking Sheet")
@@ -715,7 +775,7 @@ def update_tracking_sheet(
 
 
 if __name__ == "__main__":
-    check_leaf_folders_have_n("~/behavior", 200)
+    # check_leaf_folders_have_n("~/behavior", 200)
     # gc = get_credentials("~/Documents/credentials")[0]
     # tracking_spreadsheet = gc.open("B1K Challenge 2025 Data Replay Tracking Sheet")
     # misc_sheet = gc.open("B50 Task Misc")
@@ -725,4 +785,7 @@ if __name__ == "__main__":
     #     task_ws = tracking_spreadsheet.worksheet(f"{task_index} - {task_name}")
     #     assign_test_instances(task_ws, misc_ws, misc_values)
     #     time.sleep(1)
+    # extract_annotations(
+    #     "/scr/behavior/2025-challenge-demos", "/home/svl/Downloads/annotations", remove_memory_prefix=True
+    # )
     og.shutdown()

@@ -1,0 +1,6 @@
+pytest
+numpy
+networkx
+jupytext
+future
+nltk~=3.7

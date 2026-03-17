@@ -32,12 +32,12 @@ while [[ $# -gt 0 ]]; do
         --eval) EVAL=true; shift ;;
         --asset-pipeline) ASSET_PIPELINE=true; shift ;;
         --dev) DEV=true; shift ;;
-        --cuda-version) CUDA_VERSION="\$2"; shift 2 ;;
+        --cuda-version) CUDA_VERSION="$2"; shift 2 ;;
         --accept-conda-tos) ACCEPT_CONDA_TOS=true; shift ;;
         --accept-nvidia-eula) ACCEPT_NVIDIA_EULA=true; shift ;;
         --accept-dataset-tos) ACCEPT_DATASET_TOS=true; shift ;;
         --confirm-no-conda) CONFIRM_NO_CONDA=true; shift ;;
-        *) echo "Unknown option: \$1"; exit 1 ;;
+        *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
 
@@ -71,9 +71,9 @@ fi
 
 # Validate dependencies
 [ "$OMNIGIBSON" = true ] && [ "$BDDL" = false ] && { echo "ERROR: --omnigibson requires --bddl"; exit 1; }
-[ "$DATASET" = true ] && [ "$OMNIGIBSON" = false ] && { echo "ERROR: --dataset requires --omnigibson"; exit 1; }
 [ "$PRIMITIVES" = true ] && [ "$OMNIGIBSON" = false ] && { echo "ERROR: --primitives requires --omnigibson"; exit 1; }
 [ "$EVAL" = true ] && [ "$OMNIGIBSON" = false ] && { echo "ERROR: --eval requires --omnigibson"; exit 1; }
+[ "$EVAL" = true ] && [ "$JOYLO" = false ] && { echo "ERROR: --eval requires --joylo"; exit 1; }
 [ "$NEW_ENV" = true ] && [ "$CONFIRM_NO_CONDA" = true ] && { echo "ERROR: --new-env and --confirm-no-conda are mutually exclusive"; exit 1; }
 
 WORKDIR=$(pwd)
@@ -152,7 +152,7 @@ EOF
         cat << EOF
 3. BEHAVIOR DATA BUNDLE END USER LICENSE AGREEMENT
     Last revision: December 8, 2022
-    This License Agreement is for the BEHAVIOR Data Bundle (“Data”). It works with OmniGibson (“Software”) which is a software stack licensed under the MIT License, provided in this repository: https://github.com/StanfordVL/OmniGibson. 
+    This License Agreement is for the BEHAVIOR Data Bundle (“Data”). It works with OmniGibson (“Software”) which is a software stack licensed under the MIT License, provided in this repository: https://github.com/StanfordVL/BEHAVIOR-1K. 
     The license agreements for OmniGibson and the Data are independent. This BEHAVIOR Data Bundle contains artwork and images (“Third Party Content”) from third parties with restrictions on redistribution. 
     It requires measures to protect the Third Party Content which we have taken such as encryption and the inclusion of restrictions on any reverse engineering and use. 
     Recipient is granted the right to use the Data under the following terms and conditions of this License Agreement (“Agreement”):
@@ -201,7 +201,7 @@ if [ "$NEW_ENV" = true ]; then
     fi
     
     source "$(conda info --base)/etc/profile.d/conda.sh"
-    
+
     # Check if environment already exists and exit with instructions
     if conda env list | grep -q "^behavior "; then
         echo ""
@@ -211,13 +211,13 @@ if [ "$NEW_ENV" = true ]; then
         echo ""
         exit 1
     fi
-    
+
     # Create environment with only Python 3.10
     conda create -n behavior python=3.10 -c conda-forge -y
     conda activate behavior
-    
+
     [[ "$CONDA_DEFAULT_ENV" != "behavior" ]] && { echo "ERROR: Failed to activate environment"; exit 1; }
-    
+
     # Install numpy and setuptools via pip
     echo "Installing numpy and setuptools..."
     pip install "numpy<2" "setuptools<=79"
@@ -234,8 +234,8 @@ fi
 # Install BDDL
 if [ "$BDDL" = true ]; then
     echo "Installing BDDL..."
-    [ ! -d "bddl" ] && { echo "ERROR: bddl directory not found"; exit 1; }
-    pip install -e "$WORKDIR/bddl"
+    [ ! -d "bddl3" ] && { echo "ERROR: bddl directory not found"; exit 1; }
+    pip install -e "$WORKDIR/bddl3"
 fi
 
 # Install OmniGibson with Isaac Sim
@@ -351,46 +351,19 @@ if [ "$OMNIGIBSON" = true ]; then
         
         install_isaac_packages || { echo "ERROR: Isaac Sim installation failed"; exit 1; }
         
-        # Fix cryptography conflict - remove conflicting version
-        if [ -n "$ISAAC_PATH" ] && [ -d "$ISAAC_PATH/exts/omni.pip.cloud/pip_prebundle/cryptography" ]; then
-            echo "Fixing cryptography conflict..."
-            rm -rf "$ISAAC_PATH/exts/omni.pip.cloud/pip_prebundle/cryptography"
+        # Extract ISAAC_PATH from isaacsim module
+        ISAAC_PATH=$(python -c "import isaacsim, os; print(os.environ.get('ISAAC_PATH', ''))" 2>/dev/null)
+        
+        # Fix websockets conflict - remove any pip_prebundle/websockets under extscache
+        if [ -n "$ISAAC_PATH" ] && [ -d "$ISAAC_PATH/extscache" ]; then
+            echo "Fixing websockets conflict..."
+            find "$ISAAC_PATH/extscache" -type d -name "websockets" -path "*/pip_prebundle/*" -exec rm -rf {} + 2>/dev/null || true
         fi
     fi
     
-    # Install datasets
-    if [ "$DATASET" = true ]; then
-        echo "Installing datasets..."
-        
-        # Determine if we should accept dataset license automatically
-        DATASET_ACCEPT_FLAG=""
-        if [ "$ACCEPT_DATASET_TOS" = true ]; then
-            DATASET_ACCEPT_FLAG="True"
-        else
-            DATASET_ACCEPT_FLAG="False"
-        fi
-        
-        export OMNI_KIT_ACCEPT_EULA=YES
-        
-        echo "Downloading OmniGibson robot assets..."
-        python -c "from omnigibson.utils.asset_utils import download_omnigibson_robot_assets; download_omnigibson_robot_assets()" || {
-            echo "ERROR: OmniGibson robot assets installation failed"
-            exit 1
-        }
+    # Force reinstall cffi 1.17.1 to resolve compatibility issues with Isaac Sim extensions
+    pip install --force-reinstall cffi==1.17.1
 
-        echo "Downloading BEHAVIOR-1K assets..."
-        python -c "from omnigibson.utils.asset_utils import download_behavior_1k_assets; download_behavior_1k_assets(accept_license=${DATASET_ACCEPT_FLAG})" || {
-            echo "ERROR: Dataset installation failed"
-            exit 1
-        }
-
-        echo "Downloading 2025 BEHAVIOR Challenge Task Instances..."
-        python -c "from omnigibson.utils.asset_utils import download_2025_challenge_task_instances; download_2025_challenge_task_instances()" || {
-            echo "ERROR: 2025 BEHAVIOR Challenge Task Instances installation failed"
-            exit 1
-        }
-    fi
-    
     echo "OmniGibson installation completed successfully!"
 fi
 
@@ -401,6 +374,7 @@ if [ "$JOYLO" = true ]; then
     pip install -e "$WORKDIR/joylo"
 fi
 
+# Install Eval
 if [ "$EVAL" = true ]; then
     # get torch version via pip and install corresponding torch-cluster
     TORCH_VERSION=$(pip show torch | grep Version | cut -d " " -f 2)
@@ -414,6 +388,44 @@ if [ "$ASSET_PIPELINE" = true ]; then
     echo "Installing asset pipeline..."
     [ ! -d "asset_pipeline" ] && { echo "ERROR: asset_pipeline directory not found"; exit 1; }
     pip install -r "$WORKDIR/asset_pipeline/requirements.txt"
+fi
+
+# Install datasets
+if [ "$DATASET" = true ]; then
+    python -c "import omnigibson" || {
+        echo "ERROR: OmniGibson import failed, please make sure you have omnigibson installed before downloading datasets"
+        exit 1
+    }
+    
+    echo "Installing datasets..."
+    
+    # Determine if we should accept dataset license automatically
+    DATASET_ACCEPT_FLAG=""
+    if [ "$ACCEPT_DATASET_TOS" = true ]; then
+        DATASET_ACCEPT_FLAG="True"
+    else
+        DATASET_ACCEPT_FLAG="False"
+    fi
+    
+    export OMNI_KIT_ACCEPT_EULA=YES
+    
+    echo "Downloading OmniGibson robot assets..."
+    python -c "from omnigibson.utils.asset_utils import download_omnigibson_robot_assets; download_omnigibson_robot_assets()" || {
+        echo "ERROR: OmniGibson robot assets installation failed"
+        exit 1
+    }
+
+    echo "Downloading BEHAVIOR-1K assets..."
+    python -c "from omnigibson.utils.asset_utils import download_behavior_1k_assets; download_behavior_1k_assets(accept_license=${DATASET_ACCEPT_FLAG})" || {
+        echo "ERROR: Dataset installation failed"
+        exit 1
+    }
+
+    echo "Downloading 2025 BEHAVIOR Challenge Task Instances..."
+    python -c "from omnigibson.utils.asset_utils import download_2025_challenge_task_instances; download_2025_challenge_task_instances()" || {
+        echo "ERROR: 2025 BEHAVIOR Challenge Task Instances installation failed"
+        exit 1
+    }
 fi
 
 echo ""
