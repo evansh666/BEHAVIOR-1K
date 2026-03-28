@@ -34,9 +34,16 @@ ROBOT_CAMERA_NAMES = {
     "R1Pro_Stereo": {
         "left_wrist": "robot::robot:left_realsense_link:Camera:0",
         "right_wrist": "robot::robot:right_realsense_link:Camera:0",
-        "head_left": "robot::robot:zed_link:Left_Camera:0",
-        "head_right": "robot::robot:zed_link:Right_Camera:0",
+        "head_left": "robot::robot:zed_link:Camera:0",
+        "head_right": "robot::robot:zed_link:Camera:1",
     },
+    "RealR1Pro_Stereo":{
+        "left_wrist": "robot::robot:left_realsense_link:Camera:0",
+        "right_wrist": "robot::robot:right_realsense_link:Camera:0",
+        "head_left": "robot::robot:zed_link:Camera:0",
+        "head_right": "robot::robot:zed_link:Camera:1",
+    },
+        
 }
 
 # Camera resolutions and corresponding intrinstics
@@ -137,6 +144,16 @@ ACTION_QPOS_INDICES = {
             "right_gripper": np.s_[22:23],
         }
     ),
+    "RealR1Pro_Stereo": OrderedDict(
+        {
+            "base": np.s_[0:3],
+            "torso": np.s_[3:7],
+            "left_arm": np.s_[7:14],
+            "left_gripper": np.s_[14:15],
+            "right_arm": np.s_[15:22],
+            "right_gripper": np.s_[22:23],
+        }
+    ),
 }
 
 
@@ -196,6 +213,12 @@ PROPRIOCEPTION_INDICES = {
         }
     ),
     "RealR1Pro": OrderedDict(
+        {
+            "joint_qpos": np.s_[0:23],
+            "base_qvel": np.s_[23:26],
+        }
+    ),
+    "RealR1Pro_Stereo": OrderedDict(
         {
             "joint_qpos": np.s_[0:23],
             "base_qvel": np.s_[23:26],
@@ -337,6 +360,15 @@ PROPRIO_QPOS_INDICES = {
             "right_gripper": np.s_[26:28],
         }
     ),
+    "RealR1Pro_Stereo": OrderedDict(
+        {
+            "torso": np.s_[6:10],
+            "left_arm": np.s_[10:24:2],
+            "right_arm": np.s_[11:24:2],
+            "left_gripper": np.s_[24:26],
+            "right_gripper": np.s_[26:28],
+        }
+    ),
     "R1Pro_Stereo": OrderedDict(
         {
             "torso": np.s_[6:10],
@@ -411,6 +443,23 @@ JOINT_RANGE = {
         "right_gripper": (th.tensor([0.00], dtype=th.float32), th.tensor([0.05], dtype=th.float32)),
     },
     "R1Pro_Stereo": {
+        "base": (th.tensor([-0.75, -0.75, -1.0], dtype=th.float32), th.tensor([0.75, 0.75, 1.0], dtype=th.float32)),
+        "torso": (
+            th.tensor([-1.1345, -2.7925, -1.8326, -3.0543], dtype=th.float32),
+            th.tensor([1.8326, 2.5307, 1.5708, 3.0543], dtype=th.float32),
+        ),
+        "left_arm": (
+            th.tensor([-4.4506, -0.1745, -2.3562, -2.0944, -2.3562, -1.0472, -1.5708], dtype=th.float32),
+            th.tensor([1.3090, 3.1416, 2.3562, 0.3491, 2.3562, 1.0472, 1.5708], dtype=th.float32),
+        ),
+        "left_gripper": (th.tensor([0.00], dtype=th.float32), th.tensor([0.05], dtype=th.float32)),
+        "right_arm": (
+            th.tensor([-4.4506, -3.1416, -2.3562, -2.0944, -2.3562, -1.0472, -1.5708], dtype=th.float32),
+            th.tensor([1.3090, 0.1745, 2.3562, 0.3491, 2.3562, 1.0472, 1.5708], dtype=th.float32),
+        ),
+        "right_gripper": (th.tensor([0.00], dtype=th.float32), th.tensor([0.05], dtype=th.float32)),
+    },
+    "RealR1Pro_Stereo": {
         "base": (th.tensor([-0.75, -0.75, -1.0], dtype=th.float32), th.tensor([0.75, 0.75, 1.0], dtype=th.float32)),
         "torso": (
             th.tensor([-1.1345, -2.7925, -1.8326, -3.0543], dtype=th.float32),
